@@ -197,6 +197,10 @@ def crawl_itviec_jobs(pages=1, headless=False):
     return pd.DataFrame(rows)
 
 if __name__ == "__main__":
-    df = crawl_itviec_jobs(pages=56, headless=False) 
-    df.to_csv("itviec_jobs_full.csv", index=False, encoding="utf-8-sig")
-    print("✅ Đã lưu dữ liệu vào itviec_jobs_full.csv")
+    print(">>> Bắt đầu crawl ITviec...")
+    df = crawl_itviec_jobs(pages=3, headless=True)  # chạy ít trang để test trước
+    output_path = os.path.join(os.getcwd(), "itviec_jobs_full.csv")
+    df.to_csv(output_path, index=False, encoding="utf-8-sig")
+    print(f"✅ Đã lưu file CSV tại: {output_path}")
+    print(f"✅ Tổng số dòng crawl được: {len(df)}")
+
