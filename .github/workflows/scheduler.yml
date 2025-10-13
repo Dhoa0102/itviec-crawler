@@ -20,8 +20,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser
+          python -m pip install --upgrade pip
+          pip install --upgrade setuptools wheel
+          pip install --break-system-packages -r requirements.txt
 
       - name: Run crawler
         run: python main.py
