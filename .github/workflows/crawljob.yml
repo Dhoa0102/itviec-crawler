@@ -1,0 +1,41 @@
+name: Auto Crawl ITviec Jobs
+
+on:
+  schedule:
+    - cron: '0 1 * * *'      # 👉 chạy mỗi ngày lúc 08:00 sáng (UTC+7 = 1h UTC)
+  workflow_dispatch:          # Cho phép bấm “Run workflow” thủ công
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run crawler
+        run: python main.py
+
+      - name: Upload result CSV
+        uses: actions/upload-artifact@v4
+        with:
+          name: itviec_jobs_full
+          path: itviec_jobs_full.csv
+
+      - name: Commit & push updated CSV
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git add itviec_jobs_full.csv
+          git commit -m "Update crawl result $(date)"
+          git push
