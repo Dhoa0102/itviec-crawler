@@ -26,8 +26,14 @@ jobs:
           pip install --upgrade setuptools wheel
           pip install --break-system-packages -r requirements.txt
 
-      - name: Run crawler
-        run: python main.py
+      - name: Run crawler (with Chrome)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser
+          export PATH=$PATH:/usr/bin/chromium-browser
+          echo "🚀 Starting crawler..."
+          python main.py
+          echo "✅ Crawl completed."
 
       - name: Upload result CSV
         uses: actions/upload-artifact@v4
