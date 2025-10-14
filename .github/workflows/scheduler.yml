@@ -13,11 +13,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false  # để tránh xung đột khi commit lại
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -25,15 +29,29 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           pip install --break-system-packages undetected-chromedriver selenium pandas
 
-
       - name: Run crawler (headless)
         run: |
           echo "🚀 Starting crawler..."
           python main.py
           echo "✅ Crawl completed."
 
-      - name: Upload result CSV
+      - name: Upload result CSV as artifact
         uses: actions/upload-artifact@v4
         with:
           name: itviec_jobs_full
           path: itviec_jobs_full.csv
+
+      # 🧩 Thêm bước này để commit CSV mới vào repo
+      - name: Commit and push CSV to repository
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+
+          # copy file ra thư mục gốc nếu cần
+          mv itviec_jobs_full.csv data_itviec_jobs.csv
+
+          git add data_itviec_jobs.csv
+          git commit -m "🤖 Update ITviec jobs data [$(date '+%Y-%m-%d %H:%M')]"
+          git push origin HEAD:main
