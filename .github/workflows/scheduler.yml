@@ -14,7 +14,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          persist-credentials: false  # để tránh xung đột khi commit lại
+          persist-credentials: true  # cần true để có quyền push
           fetch-depth: 0
 
       - name: Set up Python
@@ -25,7 +25,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y chromium-browser
+          sudo apt-get install -y chromium-browser chromium-chromedriver
           python -m pip install --upgrade pip setuptools wheel
           pip install --break-system-packages undetected-chromedriver selenium pandas
 
@@ -49,13 +49,14 @@ jobs:
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
 
+          # ✅ Kéo bản mới nhất về để tránh xung đột
+          git pull origin main --rebase || true
+
+          # ✅ Đổi tên file nếu cần
           mv itviec_jobs_full.csv data_itviec_jobs.csv || true
 
           git add data_itviec_jobs.csv || true
           git commit -m "🤖 Update ITviec jobs data [$(date '+%Y-%m-%d %H:%M')]" || echo "No changes to commit"
 
-          # ⚙️ Cấu hình lại remote để dùng token xác thực
-          git remote remove origin
-          git remote add origin https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git
-
-          git push origin HEAD:main
+          # ⚙️ Dùng token mặc định để push an toàn
+          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git HEAD:main
