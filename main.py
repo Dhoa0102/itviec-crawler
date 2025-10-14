@@ -1,13 +1,17 @@
 import os
-import undetected_chromedriver as uc
+import gc
+import re
+import time
+import sys
+import warnings
+import pandas as pd
+from datetime import datetime, timedelta
+from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import pandas as pd
-import time, gc, re, sys, warnings
-from datetime import datetime, timedelta
 
-# Tắt warning không cần thiết
+# ⚙️ Tắt warning không cần thiết
 if not sys.warnoptions:
     warnings.simplefilter("ignore")
 
@@ -34,12 +38,11 @@ def parse_relative_time(text: str) -> str:
 
 
 def create_chrome_driver(headless=True):
-    """Khởi tạo Chrome ổn định cho môi trường CI (Ubuntu headless)"""
-    options = uc.ChromeOptions()
+    """Khởi tạo ChromeDriver chuẩn cho môi trường CI"""
+    options = webdriver.ChromeOptions()
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
-    options.add_argument("--remote-debugging-port=9222")
     options.add_argument("--window-size=1920,1080")
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument(
@@ -50,23 +53,38 @@ def create_chrome_driver(headless=True):
     if headless:
         options.add_argument("--headless=new")
 
-    driver = uc.Chrome(options=options)
+    # 🔹 Chỉ định rõ đường dẫn chromedriver trong Ubuntu runner
+    driver = webdriver.Chrome(options=options)
     driver.implicitly_wait(10)
     return driver
 
 
-def crawl_itviec_jobs(pages=1, headless=True):
-    """Crawl dữ liệu việc làm từ ITviec"""
+def crawl_itviec_jobs(pages=None, headless=True):
+    """Crawl dữ liệu việc làm từ ITviec (auto crawl hết trang)"""
     driver = create_chrome_driver(headless=headless)
-    wait = WebDriverWait(driver, 25)
+    wait = WebDriverWait(driver, 20)
     base_url = "https://itviec.com/it-jobs"
     rows = []
 
     try:
-        for page in range(1, pages + 1):
-            print(f"🔍 Đang crawl trang {page}...")
+        driver.get(base_url)
+        time.sleep(5)
+
+        # 🔹 Lấy tổng số trang từ phân trang
+        try:
+            pagination_buttons = driver.find_elements(By.CSS_SELECTOR, "nav ul.pagination li a")
+            page_numbers = [int(btn.text.strip()) for btn in pagination_buttons if btn.text.strip().isdigit()]
+            max_page = max(page_numbers) if page_numbers else 1
+        except Exception:
+            max_page = 1
+
+        total_pages = min(pages or max_page, 50)
+        print(f"📄 Tổng số trang cần crawl: {total_pages}")
+
+        for page in range(1, total_pages + 1):
+            print(f"🔍 Đang crawl trang {page}/{total_pages}...")
             driver.get(f"{base_url}?page={page}")
-            time.sleep(5)  # chờ trang render JS đầy đủ
+            time.sleep(5)
 
             try:
                 wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.job-card")))
@@ -75,12 +93,13 @@ def crawl_itviec_jobs(pages=1, headless=True):
                 continue
 
             job_cards = driver.find_elements(By.CSS_SELECTOR, "div.job-card")
-            if len(job_cards) == 0:
-                print(f"⚠️ Không tìm thấy job nào ở trang {page}, bỏ qua...")
-                continue
+            if not job_cards:
+                print(f"⚠️ Không tìm thấy job nào ở trang {page}, dừng crawl.")
+                break
 
             for idx, card in enumerate(job_cards, 1):
                 try:
+                    # --- Lấy các thông tin chính ---
                     job_link = card.get_attribute("data-search--job-selection-job-url-value") or ""
                     if job_link.startswith("/"):
                         job_link = "https://itviec.com" + job_link
@@ -88,8 +107,7 @@ def crawl_itviec_jobs(pages=1, headless=True):
                     # Danh mục
                     try:
                         job_category = card.find_element(
-                            By.CSS_SELECTOR,
-                            "div.imt-1 a.position-relative.stretched-link.text-rich-grey"
+                            By.CSS_SELECTOR, "div.imt-1 a.position-relative.stretched-link.text-rich-grey"
                         ).text.strip()
                     except Exception:
                         job_category = ""
@@ -128,6 +146,7 @@ def crawl_itviec_jobs(pages=1, headless=True):
                         except Exception:
                             return []
 
+                    # Job info
                     job_title = safe("div.preview-job-header h2.text-it-black")
                     company_name = safe("div.preview-job-header span a.normal-text") or safe(
                         "section.company-infos h2 a"
@@ -141,7 +160,7 @@ def crawl_itviec_jobs(pages=1, headless=True):
                             ".//section[contains(@class,'preview-job-overview')]//span"
                             "[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'office')"
                             " or contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'remote')"
-                            " or contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'hybrid')]"
+                            " or contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'hybrid')]",
                         )
                         for el in wm_candidates:
                             txt = el.text.strip()
@@ -157,7 +176,7 @@ def crawl_itviec_jobs(pages=1, headless=True):
                             By.XPATH,
                             ".//section[contains(@class,'preview-job-overview')]"
                             "//*[name()='use' and contains(@href,'#clock')]"
-                            "/ancestor::*[name()='svg']/following-sibling::span"
+                            "/ancestor::*[name()='svg']/following-sibling::span",
                         )
                         date_posted = parse_relative_time(clock_span.text.strip())
                     except Exception:
@@ -165,16 +184,18 @@ def crawl_itviec_jobs(pages=1, headless=True):
 
                     skills_required = ", ".join(safe_all("section.preview-job-overview .d-flex.flex-wrap a.itag"))
 
-                    rows.append({
-                        "job_title": job_title,
-                        "company_name": company_name,
-                        "location": location,
-                        "skills_required": skills_required,
-                        "date_posted": date_posted,
-                        "job_link": job_link,
-                        "job_category": job_category,
-                        "work_mode": work_mode,
-                    })
+                    rows.append(
+                        {
+                            "job_title": job_title,
+                            "company_name": company_name,
+                            "location": location,
+                            "skills_required": skills_required,
+                            "date_posted": date_posted,
+                            "job_link": job_link,
+                            "job_category": job_category,
+                            "work_mode": work_mode,
+                        }
+                    )
                     print(f"✅ Trang {page} - Job {idx}/{len(job_cards)}")
                 except Exception as e:
                     print(f"⚠️ Lỗi job {idx} trang {page}: {e}")
@@ -191,8 +212,9 @@ def crawl_itviec_jobs(pages=1, headless=True):
 
 if __name__ == "__main__":
     print(">>> Bắt đầu crawl ITviec...")
-    df = crawl_itviec_jobs(pages=50, headless=True)  # crawl 3 trang để test
+    df = crawl_itviec_jobs(pages=None, headless=True)
     output_path = os.path.join(os.getcwd(), "itviec_jobs_full.csv")
+
     df.to_csv(output_path, index=False, encoding="utf-8-sig")
     print(f"✅ Đã lưu file CSV tại: {output_path}")
     print(f"✅ Tổng số dòng crawl được: {len(df)}")
