@@ -55,18 +55,36 @@ def create_chrome_driver(headless=True):
     return driver
 
 
-def crawl_itviec_jobs(pages=1, headless=True):
-    """Crawl dữ liệu việc làm từ ITviec"""
+def crawl_itviec_jobs(pages=None, headless=True):
+    """Crawl dữ liệu việc làm từ ITviec, tự động đến hết trang"""
     driver = create_chrome_driver(headless=headless)
     wait = WebDriverWait(driver, 25)
     base_url = "https://itviec.com/it-jobs"
     rows = []
 
     try:
-        for page in range(1, pages + 1):
-            print(f"🔍 Đang crawl trang {page}...")
+        driver.get(base_url)
+        time.sleep(5)
+
+        # 🔹 Lấy tổng số trang từ thanh phân trang
+        try:
+            pagination_buttons = driver.find_elements(By.CSS_SELECTOR, "nav ul.pagination li a")
+            page_numbers = []
+            for btn in pagination_buttons:
+                txt = btn.text.strip()
+                if txt.isdigit():
+                    page_numbers.append(int(txt))
+            max_page = max(page_numbers) if page_numbers else 1
+        except Exception:
+            max_page = 1
+
+        total_pages = min(pages or max_page, 50)  # Giới hạn tối đa 50 trang
+        print(f"📄 Tổng số trang cần crawl: {total_pages}")
+
+        for page in range(1, total_pages + 1):
+            print(f"🔍 Đang crawl trang {page}/{total_pages}...")
             driver.get(f"{base_url}?page={page}")
-            time.sleep(5)  # chờ trang render JS đầy đủ
+            time.sleep(5)
 
             try:
                 wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.job-card")))
@@ -75,9 +93,9 @@ def crawl_itviec_jobs(pages=1, headless=True):
                 continue
 
             job_cards = driver.find_elements(By.CSS_SELECTOR, "div.job-card")
-            if len(job_cards) == 0:
-                print(f"⚠️ Không tìm thấy job nào ở trang {page}, bỏ qua...")
-                continue
+            if not job_cards:
+                print(f"⚠️ Không tìm thấy job nào ở trang {page}, dừng crawl.")
+                break
 
             for idx, card in enumerate(job_cards, 1):
                 try:
@@ -191,8 +209,9 @@ def crawl_itviec_jobs(pages=1, headless=True):
 
 if __name__ == "__main__":
     print(">>> Bắt đầu crawl ITviec...")
-    df = crawl_itviec_jobs(pages=3, headless=True)  # crawl 3 trang để test
+    df = crawl_itviec_jobs(pages=None, headless=True)
     output_path = os.path.join(os.getcwd(), "itviec_jobs_full.csv")
+
     df.to_csv(output_path, index=False, encoding="utf-8-sig")
     print(f"✅ Đã lưu file CSV tại: {output_path}")
     print(f"✅ Tổng số dòng crawl được: {len(df)}")
