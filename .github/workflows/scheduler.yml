@@ -41,17 +41,21 @@ jobs:
           name: itviec_jobs_full
           path: itviec_jobs_full.csv
 
-      # 🧩 Thêm bước này để commit CSV mới vào repo
       - name: Commit and push CSV to repository
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
 
-          # copy file ra thư mục gốc nếu cần
-          mv itviec_jobs_full.csv data_itviec_jobs.csv
+          mv itviec_jobs_full.csv data_itviec_jobs.csv || true
 
-          git add data_itviec_jobs.csv
-          git commit -m "🤖 Update ITviec jobs data [$(date '+%Y-%m-%d %H:%M')]"
+          git add data_itviec_jobs.csv || true
+          git commit -m "🤖 Update ITviec jobs data [$(date '+%Y-%m-%d %H:%M')]" || echo "No changes to commit"
+
+          # ⚙️ Cấu hình lại remote để dùng token xác thực
+          git remote remove origin
+          git remote add origin https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git
+
           git push origin HEAD:main
