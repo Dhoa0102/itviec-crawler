@@ -18,14 +18,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y chromium-browser
-          python -m pip install --upgrade pip
-          pip install --upgrade setuptools wheel
-          pip install --break-system-packages -r requirements.txt
+          python -m pip install --upgrade pip setuptools wheel
+          pip install --break-system-packages undetected-chromedriver selenium pandas
+
 
       - name: Run crawler (headless)
         run: |
