@@ -41,9 +41,10 @@ def parse_relative_time(text: str) -> str:
 
 def create_chrome_driver(headless=True):
     """Khởi tạo Chrome ổn định cho cả local và CI"""
+    import shutil
     import subprocess
 
-    # ✅ Cập nhật Chrome + ChromeDriver cho khớp version
+    # ✅ Cập nhật và cài Chrome + Chromedriver
     try:
         subprocess.run(
             "sudo apt-get update && sudo apt-get install -y chromium-browser chromium-chromedriver",
@@ -53,6 +54,17 @@ def create_chrome_driver(headless=True):
     except Exception as e:
         print("⚠️ Không thể cài đặt lại chromium:", e)
 
+    # ✅ Copy chromedriver ra thư mục tạm (có quyền ghi)
+    chromedriver_path = "/usr/bin/chromedriver"
+    tmp_driver = "/tmp/chromedriver"
+    try:
+        shutil.copy(chromedriver_path, tmp_driver)
+        subprocess.run(f"chmod +x {tmp_driver}", shell=True)
+        print(f"✅ Đã copy chromedriver sang {tmp_driver}")
+    except Exception as e:
+        print("⚠️ Lỗi copy chromedriver:", e)
+
+    # ⚙️ Cấu hình Chrome
     options = uc.ChromeOptions()
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
@@ -73,11 +85,11 @@ def create_chrome_driver(headless=True):
     if headless:
         options.add_argument("--headless=new")
 
-    # ✅ Ép undetected_chromedriver dùng driver của hệ thống
+    # ✅ Dùng bản driver tạm để tránh lỗi Permission denied
     driver = uc.Chrome(
         options=options,
-        use_subprocess=False,
-        driver_executable_path="/usr/bin/chromedriver"
+        driver_executable_path=tmp_driver,
+        use_subprocess=False
     )
     driver.implicitly_wait(10)
     return driver
