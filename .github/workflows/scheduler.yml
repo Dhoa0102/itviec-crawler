@@ -25,12 +25,12 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget unzip xvfb libxi6 libgconf-2-4
+          sudo apt-get install -y wget unzip xvfb libxi6
 
           # Gỡ bản Chromium snap (nếu có)
           sudo snap remove chromium || true
 
-          # Cài Chrome chính thức
+          # Cài Google Chrome stable chính thức
           wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
           echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
           sudo apt-get update
@@ -39,7 +39,6 @@ jobs:
           # Tải ChromeDriver khớp version
           CHROME_VERSION=$(google-chrome --version | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")
           echo "✅ Installed Chrome version: $CHROME_VERSION"
-          DRIVER_VERSION=$(echo $CHROME_VERSION | cut -d. -f1)
           wget -N https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chromedriver-linux64.zip || true
           unzip -o chromedriver-linux64.zip -d /tmp/
           sudo mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver
