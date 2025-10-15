@@ -27,19 +27,29 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y wget unzip xvfb libxi6
 
-          # Gỡ bản Chromium snap (nếu có)
+          # Gỡ Chromium snap nếu có
           sudo snap remove chromium || true
 
-          # Cài Google Chrome stable chính thức
+          # Cài Chrome stable
           wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
           echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
 
-          # Tải ChromeDriver khớp version
+          # ✅ Tải ChromeDriver đúng theo cấu trúc mới của Google
           CHROME_VERSION=$(google-chrome --version | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")
+          MAJOR_VERSION=$(echo $CHROME_VERSION | cut -d. -f1)
           echo "✅ Installed Chrome version: $CHROME_VERSION"
-          wget -N https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chromedriver-linux64.zip || true
+
+          DRIVER_URL="https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chromedriver-linux64.zip"
+          if curl --output /dev/null --silent --head --fail "$DRIVER_URL"; then
+            echo "✅ Found exact ChromeDriver version"
+          else
+            echo "⚠️ Exact version not found, fallback to major version $MAJOR_VERSION"
+            DRIVER_URL="https://storage.googleapis.com/chrome-for-testing-public/${MAJOR_VERSION}.0.0.0/linux64/chromedriver-linux64.zip"
+          fi
+
+          wget -q -O chromedriver-linux64.zip "$DRIVER_URL"
           unzip -o chromedriver-linux64.zip -d /tmp/
           sudo mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver
           sudo chmod +x /usr/local/bin/chromedriver
