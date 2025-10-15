@@ -40,45 +40,28 @@ def parse_relative_time(text: str) -> str:
 
 
 def create_chrome_driver(headless=True):
-    """Khởi tạo Chrome driver tương thích cho môi trường CI (GitHub Actions)"""
-    import shutil, subprocess
-    from selenium import webdriver
-    from selenium.webdriver.chrome.service import Service
-
-    # ✅ Đảm bảo Chromium + Chromedriver tương thích
-    subprocess.run(
-        "sudo apt-get update && sudo apt-get install -y chromium-browser chromium-chromedriver",
-        shell=True,
-        check=True,
-    )
-
-    # ✅ Copy chromedriver ra vùng tạm có quyền ghi
-    tmp_driver = "/tmp/chromedriver"
-    shutil.copy("/usr/bin/chromedriver", tmp_driver)
-    subprocess.run(f"chmod +x {tmp_driver}", shell=True)
-
-    # ✅ Cấu hình Chrome Options (chuẩn headless cho CI)
-    options = webdriver.ChromeOptions()
+    """Khởi tạo Chrome ổn định cho cả local và CI"""
+    options = uc.ChromeOptions()
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--disable-software-rasterizer")
-    options.add_argument("--window-size=1920,1080")
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("--remote-debugging-port=9222")
-    options.add_argument("--disable-extensions")
+    options.add_argument("--window-size=1920,1080")
     options.add_argument("--disable-infobars")
-    options.add_argument("--disable-popup-blocking")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--start-maximized")
     options.add_argument("--log-level=3")
+    options.add_argument(
+        "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/118.0.5993.90 Safari/537.36"
+    )
     if headless:
         options.add_argument("--headless=new")
 
-    print("✅ Using Chromium from:", subprocess.getoutput("chromium-browser --version"))
-    print("✅ Using ChromeDriver from:", tmp_driver)
-
-    # ✅ Dùng Selenium gốc (không dùng undetected_chromedriver)
-    service = Service(tmp_driver)
-    driver = webdriver.Chrome(service=service, options=options)
+    driver = uc.Chrome(options=options)
     driver.implicitly_wait(10)
     return driver
 
