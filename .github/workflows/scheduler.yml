@@ -30,7 +30,7 @@ jobs:
           # Gỡ Chromium snap (nếu có)
           sudo snap remove chromium || true
 
-          # Cài Chrome stable chính thức
+          # Cài Chrome stable
           wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
           echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
           sudo apt-get update
@@ -41,7 +41,7 @@ jobs:
           MAJOR_VERSION=$(echo $CHROME_VERSION | cut -d. -f1)
           echo "✅ Installed Chrome version: $CHROME_VERSION"
 
-          # ✅ Tìm version driver gần nhất có sẵn (qua API chính thức)
+          # ✅ Tìm ChromeDriver gần nhất có sẵn
           DRIVER_VERSION=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json" | jq -r ".versions[].version" | grep "^${MAJOR_VERSION}\." | tail -n 1)
           echo "✅ Using ChromeDriver version: $DRIVER_VERSION"
 
@@ -51,8 +51,9 @@ jobs:
           sudo mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver
           sudo chmod +x /usr/local/bin/chromedriver
 
+          # ✅ Cài Python dependencies
           python -m pip install --upgrade pip setuptools wheel
-          pip install selenium pandas
+          pip install pandas selenium undetected-chromedriver
 
       - name: Run crawler (headless)
         run: |
