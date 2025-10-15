@@ -41,6 +41,18 @@ def parse_relative_time(text: str) -> str:
 
 def create_chrome_driver(headless=True):
     """Khởi tạo Chrome ổn định cho cả local và CI"""
+    import subprocess
+
+    # ✅ Cập nhật Chrome + ChromeDriver cho khớp version
+    try:
+        subprocess.run(
+            "sudo apt-get update && sudo apt-get install -y chromium-browser chromium-chromedriver",
+            shell=True,
+            check=True,
+        )
+    except Exception as e:
+        print("⚠️ Không thể cài đặt lại chromium:", e)
+
     options = uc.ChromeOptions()
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
@@ -61,7 +73,12 @@ def create_chrome_driver(headless=True):
     if headless:
         options.add_argument("--headless=new")
 
-    driver = uc.Chrome(options=options)
+    # ✅ Ép undetected_chromedriver dùng driver của hệ thống
+    driver = uc.Chrome(
+        options=options,
+        use_subprocess=False,
+        driver_executable_path="/usr/bin/chromedriver"
+    )
     driver.implicitly_wait(10)
     return driver
 
