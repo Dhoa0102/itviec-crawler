@@ -25,10 +25,23 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y chromium-browser chromium-chromedriver
-          python -m pip install --upgrade pip setuptools wheel
-          pip install --break-system-packages undetected-chromedriver selenium pandas
+          # Gỡ bản snap chromium mặc định (nếu có)
+          sudo snap remove chromium || true
 
+          # Cài Google Chrome stable và chromedriver tương ứng
+          wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+          CHROME_VERSION=$(google-chrome --version | grep -oE "[0-9]+\\.[0-9]+\\.[0-9]+")
+          echo "✅ Installed Chrome version: $CHROME_VERSION"
+          wget -N https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chromedriver-linux64.zip || true
+          unzip -o chromedriver-linux64.zip -d /tmp/
+          sudo mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver
+          sudo chmod +x /usr/local/bin/chromedriver
+          
+          python -m pip install --upgrade pip setuptools wheel
+          pip install selenium pandas
       - name: Run crawler (headless)
         run: |
           echo "🚀 Starting crawler..."
