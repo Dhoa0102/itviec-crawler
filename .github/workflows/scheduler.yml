@@ -25,30 +25,27 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget unzip xvfb libxi6
+          sudo apt-get install -y wget unzip xvfb libxi6 curl jq
 
-          # Gỡ Chromium snap nếu có
+          # Gỡ Chromium snap (nếu có)
           sudo snap remove chromium || true
 
-          # Cài Chrome stable
+          # Cài Chrome stable chính thức
           wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
           echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
 
-          # ✅ Tải ChromeDriver đúng theo cấu trúc mới của Google
+          # ✅ Lấy version Chrome hiện tại
           CHROME_VERSION=$(google-chrome --version | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")
           MAJOR_VERSION=$(echo $CHROME_VERSION | cut -d. -f1)
           echo "✅ Installed Chrome version: $CHROME_VERSION"
 
-          DRIVER_URL="https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chromedriver-linux64.zip"
-          if curl --output /dev/null --silent --head --fail "$DRIVER_URL"; then
-            echo "✅ Found exact ChromeDriver version"
-          else
-            echo "⚠️ Exact version not found, fallback to major version $MAJOR_VERSION"
-            DRIVER_URL="https://storage.googleapis.com/chrome-for-testing-public/${MAJOR_VERSION}.0.0.0/linux64/chromedriver-linux64.zip"
-          fi
+          # ✅ Tìm version driver gần nhất có sẵn (qua API chính thức)
+          DRIVER_VERSION=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json" | jq -r ".versions[].version" | grep "^${MAJOR_VERSION}\." | tail -n 1)
+          echo "✅ Using ChromeDriver version: $DRIVER_VERSION"
 
+          DRIVER_URL="https://storage.googleapis.com/chrome-for-testing-public/${DRIVER_VERSION}/linux64/chromedriver-linux64.zip"
           wget -q -O chromedriver-linux64.zip "$DRIVER_URL"
           unzip -o chromedriver-linux64.zip -d /tmp/
           sudo mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver
