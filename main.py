@@ -46,18 +46,24 @@ def create_chrome_driver(headless=True):
     options.add_argument("--disable-gpu")
     options.add_argument("--disable-software-rasterizer")
     options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("--remote-debugging-port=9222")
     options.add_argument("--window-size=1920,1080")
     options.add_argument("--disable-infobars")
     options.add_argument("--disable-extensions")
-    options.add_argument("--start-maximized")
     options.add_argument("--log-level=3")
     if headless:
+        # ✅ Dùng headless “mới” để ít bị chặn hơn
         options.add_argument("--headless=new")
 
-    # ✅ Đảm bảo driver tự khớp với Chrome
+    # ✅ Giả lập user-agent người thật hơn
+    options.add_argument(
+        "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/121.0.6167.85 Safari/537.36"
+    )
+
+    # ✅ Khởi tạo trình duyệt với patch cụ thể
     driver = uc.Chrome(options=options, version_main=140)
-    driver.implicitly_wait(10)
+    driver.implicitly_wait(15)
     return driver
 
 
@@ -71,9 +77,16 @@ def crawl_itviec_jobs(pages=1, headless=True):
 
     try:
         for page in range(1, pages + 1):
+            print(driver.page_source[:800])  # xem phần đầu HTML có chứa 
             print(f"🔍 Đang crawl trang {page}...")
             driver.get(f"{base_url}?page={page}")
-            time.sleep(5)
+            time.sleep(8)
+            for _ in range(3):
+                job_cards = driver.find_elements(By.CSS_SELECTOR, "div.job-card")
+                if len(job_cards) > 0:
+                    break
+                print("⏳ Đợi thêm để trang load đủ job-card...")
+                time.sleep(5)
 
             try:
                 wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.job-card")))
