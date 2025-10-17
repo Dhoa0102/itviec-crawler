@@ -40,7 +40,6 @@ def parse_relative_time(text: str) -> str:
 
 
 def create_chrome_driver(headless=True):
-    """Khởi tạo Chrome ổn định cho cả local và CI"""
     options = uc.ChromeOptions()
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
@@ -53,17 +52,14 @@ def create_chrome_driver(headless=True):
     options.add_argument("--disable-extensions")
     options.add_argument("--start-maximized")
     options.add_argument("--log-level=3")
-    options.add_argument(
-        "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/118.0.5993.90 Safari/537.36"
-    )
     if headless:
         options.add_argument("--headless=new")
 
-    driver = uc.Chrome(options=options)
+    # ✅ Đảm bảo driver tự khớp với Chrome
+    driver = uc.Chrome(options=options, version_main=140)
     driver.implicitly_wait(10)
     return driver
+
 
 # ---------------- MAIN CRAWLER ----------------
 def crawl_itviec_jobs(pages=1, headless=True):
