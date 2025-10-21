@@ -217,7 +217,22 @@ if __name__ == "__main__":
     df["crawl_date"] = crawl_date
 
     output_path = os.path.join(os.getcwd(), "itviec_jobs_full.csv")
-    df.to_csv(output_path, index=False, encoding="utf-8-sig")
 
-    print(f"✅ Crawl xong {len(df)} việc làm.")
-    print(f"📁 Đã lưu file CSV tại: {output_path}")
+    # Nếu file đã tồn tại, đọc và nối thêm dữ liệu mới
+    if os.path.exists(output_path):
+        old_df = pd.read_csv(output_path)
+        print(f"📄 Đã đọc {len(old_df)} dòng cũ từ file.")
+        # Gộp dữ liệu (nối dọc)
+        combined_df = pd.concat([old_df, df], ignore_index=True)
+        # Loại bỏ trùng (nếu có job_link trùng nhau)
+        combined_df.drop_duplicates(subset=["job_link"], inplace=True)
+        print(f"📊 Sau khi gộp và loại trùng: {len(combined_df)} dòng.")
+    else:
+        print("🆕 Không có file cũ, tạo file mới.")
+        combined_df = df
+    
+    # Ghi đè lại file CSV (đã bao gồm dữ liệu cũ + mới)
+    combined_df.to_csv(output_path, index=False, encoding="utf-8-sig")
+    
+    print(f"✅ Crawl xong {len(df)} việc làm mới.")
+    print(f"📁 Đã cập nhật tổng cộng {len(combined_df)} việc làm vào: {output_path}")
